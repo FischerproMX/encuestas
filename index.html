@@ -84,20 +84,21 @@
   }
 
   * { box-sizing: border-box; }
-  body {
+  html, body {
     margin: 0;
     font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
-    background: var(--page);
-    color: var(--text-primary);
   }
-  .viz-root { padding: 24px 16px 64px; max-width: 1080px; margin: 0 auto; }
+  .viz-root {
+    padding: 24px 16px 64px; max-width: 1080px; margin: 0 auto;
+    color: var(--text-primary); background: var(--page); min-height: 100vh;
+  }
 
   header.top { margin-bottom: 20px; }
   .eyebrow {
     font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase;
     color: var(--text-muted); margin: 0 0 4px;
   }
-  h1 { font-size: 22px; margin: 0 0 4px; letter-spacing: -0.01em; }
+  h1 { font-size: 22px; margin: 0 0 4px; letter-spacing: -0.01em; color: var(--text-primary); }
   .subtitle { color: var(--text-secondary); font-size: 14px; margin: 0; }
 
   .theme-toggle {
@@ -115,7 +116,7 @@
     background: var(--surface-1); border: 1px solid var(--border); border-radius: 10px;
     padding: 12px 14px; box-shadow: var(--card-shadow);
   }
-  .stat-tile .num { font-size: 22px; font-weight: 600; font-variant-numeric: proportional-nums; }
+  .stat-tile .num { font-size: 22px; font-weight: 600; font-variant-numeric: proportional-nums; color: var(--text-primary); }
   .stat-tile .label { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
 
   nav.tabs {
@@ -124,7 +125,7 @@
   }
   nav.tabs button {
     appearance: none; border: none; background: none; cursor: pointer;
-    padding: 10px 14px; font-size: 13px; font-weight: 500; color: var(--text-secondary);
+    padding: 10px 14px; font-size: 17px; font-weight: 700; color: var(--text-primary);
     border-bottom: 2px solid transparent; white-space: nowrap;
     font-family: inherit;
   }
@@ -137,7 +138,7 @@
     background: var(--surface-1); border: 1px solid var(--border); border-radius: 12px;
     padding: 16px 18px 12px; margin-bottom: 14px; box-shadow: var(--card-shadow);
   }
-  .card-title { font-size: 14px; font-weight: 600; margin: 0 0 2px; }
+  .card-title { font-size: 14px; font-weight: 600; margin: 0 0 2px; color: var(--text-primary); }
   .card-sub { font-size: 12px; color: var(--text-muted); margin: 0 0 14px; }
 
   .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
@@ -168,7 +169,40 @@
   .careo-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
   @media (max-width: 720px) { .careo-grid { grid-template-columns: 1fr; } }
   footer.foot { margin-top: 24px; font-size: 11.5px; color: var(--text-muted); text-align: center; }
+
+  .map-disclaimer {
+    font-size: 11.5px; color: var(--text-muted); background: var(--track); border-radius: 8px;
+    padding: 8px 10px; margin: 0 0 14px;
+  }
+  .heatmap-grid {
+    display: flex; flex-wrap: wrap; align-content: flex-start; gap: 4px;
+  }
+  .heat-tile {
+    display: flex; flex-direction: column; justify-content: center; align-items: center;
+    text-align: center; border-radius: 8px; color: #fff; padding: 4px;
+    font-size: 10.5px; line-height: 1.2; overflow: hidden; cursor: default;
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,0.18);
+  }
+  .heat-tile .t-name { font-weight: 600; text-shadow: 0 1px 2px rgba(0,0,0,0.35); word-break: break-word; }
+  .heat-tile .t-sub { opacity: .92; text-shadow: 0 1px 2px rgba(0,0,0,0.35); }
+  table.data-table#mapTable { display: table; margin-top: 4px; }
+
+  .leaflet-map-box { height: 460px; width: 100%; border-radius: 10px; border: 1px solid var(--border); background: var(--track); z-index: 0; }
+  .map-fallback { font-size: 12px; color: var(--text-muted); margin-top: 8px; }
+  .leaflet-popup-content { font-size: 12.5px; }
+  .colonia-pin-label {
+    background: rgba(255,255,255,0.92); color: #111; font-size: 9.5px; font-weight: 600;
+    padding: 1px 4px; border-radius: 4px; white-space: nowrap; box-shadow: 0 1px 3px rgba(0,0,0,0.25);
+  }
 </style>
+<script>
+  window.__gmapsReady = false;
+  window.onGoogleMapsLoaded = function(){
+    window.__gmapsReady = true;
+    if (window.__tryRenderGoogleMap) window.__tryRenderGoogleMap();
+  };
+</script>
+<script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDOlHFQ30ilSLNraauR_2qIwLMeLsaps9k&callback=onGoogleMapsLoaded"></script>
 </head>
 <body>
 <div class="viz-root">
@@ -191,6 +225,7 @@
     <button data-tab="careos">Careos</button>
     <button data-tab="diputaciones">Diputaciones</button>
     <button data-tab="perfil">Perfil demográfico</button>
+    <button data-tab="mapa">Mapa por colonia</button>
   </nav>
 
   <section class="panel active" id="panel-panorama">
@@ -273,75 +308,222 @@
     </div>
   </section>
 
+  <section class="panel" id="panel-mapa">
+    <div class="card">
+      <div class="card-title">Mapa coroplético — candidato líder por colonia</div>
+      <p class="card-sub">Un color por candidato (no intensidad). El tamaño de cada punto refleja el número de respuestas en esa colonia.</p>
+      <p class="map-disclaimer">Mapa real de Google Maps centrado en San Miguel de Cozumel. La mayoría de las colonias (28 de 42) usan su coordenada real, georreferenciada a partir de CodigoPostal.me / SEPOMEX. Las colonias sin coordenada oficial (14 de 42) se muestran con un punto semitransparente, distribuido en espiral alrededor del centro del pueblo como ubicación aproximada — se marcan como "(ubicación aproximada)" en el detalle. Pasa el cursor sobre un punto para ver el detalle.</p>
+      <div class="legend" id="mapLegend"></div>
+      <div id="leafletMap" class="leaflet-map-box"></div>
+      <p class="map-fallback" id="mapFallbackNote" style="display:none;">No se pudo cargar el mapa de Google Maps (sin conexión a internet en este momento, o la clave de API no está disponible). Usa el mosaico de abajo mientras tanto.</p>
+      <button class="table-toggle" id="mosaicToggleBtn" type="button" style="float:none; margin-top:10px;">Ver también como mosaico por tamaño</button>
+      <div class="heatmap-grid" id="heatmapGrid" style="display:none; margin-top:10px;"></div>
+    </div>
+  </section>
+
+
 </div>
 
 <script>
-const DATA = {"meta": {"total": 1144, "completed": 1144, "partial": 0, "colonias": 43}, "voto": [{"label": "Margarita Vázquez (Morena)", "count": 300, "pct": 26.5}, {"label": "Ninguno / Anularía", "count": 173, "pct": 15.3}, {"label": "Juan Carlos González (PRI)", "count": 169, "pct": 14.9}, {"label": "José Luis Chacón (Morena)", "count": 152, "pct": 13.4}, {"label": "Rusell Cohuo (Morena)", "count": 96, "pct": 8.5}, {"label": "Roberto Marín (MC)", "count": 61, "pct": 5.4}, {"label": "Alex Mattar", "count": 42, "pct": 3.7}, {"label": "Juanita Alonso Marrufo", "count": 35, "pct": 3.1}, {"label": "Javier Villanueva Marrufo", "count": 32, "pct": 2.8}, {"label": "Javier Aguirre", "count": 29, "pct": 2.6}, {"label": "Renán Tajonar (Morena)", "count": 23, "pct": 2.0}, {"label": "Otros / dispersos", "count": 22, "pct": 1.9}], "aprobacion": [{"label": "Regular", "count": 301, "pct": 28.9}, {"label": "Muy malo", "count": 248, "pct": 23.8}, {"label": "Malo", "count": 213, "pct": 20.5}, {"label": "Bueno", "count": 182, "pct": 17.5}, {"label": "Muy bueno", "count": 90, "pct": 8.6}, {"label": "NC", "count": 4, "pct": 0.4}, {"label": "NS / NC", "count": 3, "pct": 0.3}], "reeleccion": [{"label": "No estoy de acuerdo.", "count": 403, "pct": 38.9}, {"label": "Muy en desacuerdo.", "count": 267, "pct": 25.7}, {"label": "De acuerdo.", "count": 139, "pct": 13.4}, {"label": "Me da Igual.", "count": 135, "pct": 13.0}, {"label": "Muy de acuerdo.", "count": 89, "pct": 8.6}, {"label": "NC", "count": 4, "pct": 0.4}], "malecon": [{"label": "Mejor que se invierta en el problema del agua", "count": 596, "pct": 61.7}, {"label": "Apruebo que se invierta en el malecon", "count": 87, "pct": 9.0}, {"label": "Me da Igual.", "count": 46, "pct": 4.8}, {"label": "Invertir en otro (especifique)", "count": 12, "pct": 1.2}, {"label": "Invertir en otro (especifique) - Seguridad", "count": 9, "pct": 0.9}], "careos": {"Marín vs González vs Tajonar": [{"label": "Por ninguno / Anularía", "count": 305, "pct": 33.9}, {"label": "Juan Carlos González", "count": 211, "pct": 23.4}, {"label": "No iría a votar", "count": 126, "pct": 14.0}, {"label": "Roberto Marín  ·  Movimiento Ciudadano", "count": 115, "pct": 12.8}, {"label": "NS / NC", "count": 68, "pct": 7.5}, {"label": "Renan Sanchez Tajonar  ·  Morena", "count": 46, "pct": 5.1}, {"label": "NC", "count": 30, "pct": 3.3}], "Marín vs González vs Chacón": [{"label": "Por ninguno / Anularía", "count": 238, "pct": 26.3}, {"label": "Juan Carlos González", "count": 210, "pct": 23.2}, {"label": "José Luis Chacón Méndez  ·  Morena", "count": 168, "pct": 18.6}, {"label": "Roberto Marín  ·  Movimiento Ciudadano", "count": 118, "pct": 13.0}, {"label": "No iría a votar", "count": 91, "pct": 10.1}, {"label": "NS / NC", "count": 53, "pct": 5.9}, {"label": "NC", "count": 27, "pct": 3.0}], "Marín vs González vs Vázquez": [{"label": "Margarita Vazquez (Camarona).  ·  Morena", "count": 325, "pct": 36.0}, {"label": "Juan Carlos González", "count": 201, "pct": 22.3}, {"label": "Por ninguno / Anularía", "count": 161, "pct": 17.8}, {"label": "Roberto Marín  ·  Movimiento Ciudadano", "count": 76, "pct": 8.4}, {"label": "No iría a votar", "count": 65, "pct": 7.2}, {"label": "NC", "count": 38, "pct": 4.2}, {"label": "NS / NC", "count": 37, "pct": 4.1}], "Marín vs Delbouis vs Chacón": [{"label": "Por ninguno / Anularía", "count": 250, "pct": 28.2}, {"label": "Pedro Joaquin Delbouis  ·  PRI", "count": 208, "pct": 23.5}, {"label": "José Luis Chacón Méndez  ·  Morena", "count": 162, "pct": 18.3}, {"label": "Roberto Marín  ·  Movimiento Ciudadano", "count": 104, "pct": 11.7}, {"label": "No iría a votar", "count": 74, "pct": 8.4}, {"label": "NS / NC", "count": 59, "pct": 6.7}, {"label": "NC", "count": 29, "pct": 3.3}], "Marín vs González vs Cohuo": [{"label": "Por ninguno / Anularía", "count": 238, "pct": 27.5}, {"label": "Juan Carlos González  ·  PRI", "count": 199, "pct": 23.0}, {"label": "Roberto Marín  ·  Movimiento Ciudadano", "count": 112, "pct": 13.0}, {"label": "Rusell Cohuo.  ·  Morena", "count": 111, "pct": 12.8}, {"label": "No iría a votar", "count": 97, "pct": 11.2}, {"label": "NS / NC", "count": 67, "pct": 7.8}, {"label": "NC", "count": 40, "pct": 4.6}], "Marín vs Delbouis vs Vázquez": [{"label": "Margarita Vazquez (Camarona).  ·  Morena", "count": 329, "pct": 36.9}, {"label": "Pedro Joaquin Delbouis  ·  PRI", "count": 194, "pct": 21.8}, {"label": "Por ninguno / Anularía", "count": 165, "pct": 18.5}, {"label": "Roberto Marín  ·  Movimiento Ciudadano", "count": 79, "pct": 8.9}, {"label": "No iría a votar", "count": 46, "pct": 5.2}, {"label": "NS / NC", "count": 39, "pct": 4.4}, {"label": "NC", "count": 39, "pct": 4.4}]}, "dip_local": [{"label": "Alex Mattar", "count": 201, "pct": 22.6}, {"label": "Margarita Vázquez", "count": 161, "pct": 18.1}, {"label": "Pedro Joaquín Delbouis", "count": 140, "pct": 15.7}, {"label": "Daniela Ayala", "count": 92, "pct": 10.3}, {"label": "Otros / dispersos", "count": 50, "pct": 5.6}, {"label": "Oscar Pinto Silva", "count": 46, "pct": 5.2}, {"label": "Ninguno / no sabe", "count": 34, "pct": 3.8}, {"label": "Juanita Alonso Marrufo", "count": 33, "pct": 3.7}, {"label": "Carmen Joaquín", "count": 32, "pct": 3.6}, {"label": "Irwin Batun Alpuche", "count": 30, "pct": 3.4}], "dip_federal": [{"label": "Ninguno de ellos", "count": 320, "pct": 39.4}, {"label": "Carmen Joaquín", "count": 88, "pct": 10.8}, {"label": "Cristina Torres", "count": 88, "pct": 10.8}, {"label": "Sara Latife", "count": 54, "pct": 6.6}, {"label": "Otros / dispersos", "count": 49, "pct": 6.0}, {"label": "Atenea Ricalde", "count": 48, "pct": 5.9}, {"label": "Mauricio Góngora", "count": 46, "pct": 5.7}, {"label": "Juanita Alonso Marrufo", "count": 36, "pct": 4.4}, {"label": "Ninguno / no sabe", "count": 21, "pct": 2.6}], "partido_mejor": [{"label": "MORENA", "count": 431, "pct": 49.0}, {"label": "PRI", "count": 202, "pct": 23.0}, {"label": "NINGUNO", "count": 114, "pct": 13.0}, {"label": "PT", "count": 51, "pct": 5.8}, {"label": "PAN", "count": 46, "pct": 5.2}, {"label": "MOVIMIENTO CIUDADANO", "count": 16, "pct": 1.8}, {"label": "NC", "count": 14, "pct": 1.6}, {"label": "PARTIDO VERDE", "count": 3, "pct": 0.3}, {"label": "MAS", "count": 2, "pct": 0.2}], "gobernador": [{"label": "RAFAEL MARIN MOLLINEDO", "count": 481, "pct": 55.4}, {"label": "NINGUNA DE ELLOS", "count": 232, "pct": 26.7}, {"label": "EUGENIO GINO SEGURA", "count": 118, "pct": 13.6}, {"label": "ANA PATRICIA PERALTA", "count": 17, "pct": 2.0}, {"label": "NC", "count": 15, "pct": 1.7}, {"label": "MARIBEL VILLEGAS", "count": 5, "pct": 0.6}], "edad": [{"label": "55 años o más", "count": 364, "pct": 31.8}, {"label": "45 a 54 años", "count": 305, "pct": 26.7}, {"label": "35 a 44 años", "count": 245, "pct": 21.4}, {"label": "25 a 34 años", "count": 173, "pct": 15.1}, {"label": "18 a 24 años", "count": 57, "pct": 5.0}], "sexo": [{"label": "HOMBRE", "count": 582, "pct": 50.9}, {"label": "MUJER", "count": 546, "pct": 47.7}, {"label": "PREFIERO NO RESPONDER", "count": 16, "pct": 1.4}], "colonias": [{"label": "CENTRO", "count": 152}, {"label": "E. ZAPATA", "count": 109}, {"label": "10 DE ABRIL", "count": 103}, {"label": "A. LOPEZ MATEOS", "count": 80}, {"label": "ANDRES QROO", "count": 54}, {"label": "CUZAMIL INVIQROO", "count": 54}, {"label": "FLAMINGOS 1 Y  2", "count": 47}, {"label": "NUEVA GENERACION", "count": 47}, {"label": "SAN MIGUEL 1", "count": 44}, {"label": "INDEPENDECIA", "count": 41}, {"label": "SAN MIGUEL 2", "count": 39}, {"label": "SAN GERVACIO", "count": 38}, {"label": "FELIX GONZALEZ", "count": 31}, {"label": "FLORES MAGON 1", "count": 30}, {"label": "RECIDENCIAL ALTAMAR", "count": 28}], "ocupacion_top": [{"label": "Ama de casa", "count": 90, "pct": 8.5}, {"label": "Empleado", "count": 73, "pct": 6.9}, {"label": "Empleada", "count": 57, "pct": 5.4}, {"label": "Comerciante", "count": 45, "pct": 4.3}, {"label": "NC", "count": 33, "pct": 3.1}, {"label": "Maestra", "count": 31, "pct": 2.9}, {"label": "Abogado", "count": 31, "pct": 2.9}, {"label": "Empresario", "count": 28, "pct": 2.7}, {"label": "Empresaria", "count": 25, "pct": 2.4}, {"label": "Taxista", "count": 22, "pct": 2.1}]};
+let DATA = {"meta": {"total": 1167, "completed": 1167, "partial": 0, "colonias": 42}, "voto": [{"label": "Margarita Vázquez (Morena)", "count": 304, "pct": 26.2}, {"label": "Ninguno / Anularía", "count": 176, "pct": 15.2}, {"label": "Juan Carlos González (PRI)", "count": 170, "pct": 14.7}, {"label": "José Luis Chacón (Morena)", "count": 154, "pct": 13.3}, {"label": "Rusell Cohuo (Morena)", "count": 98, "pct": 8.4}, {"label": "Roberto Marín (MC)", "count": 64, "pct": 5.5}, {"label": "Alex Mattar", "count": 42, "pct": 3.6}, {"label": "Juanita Alonso Marrufo", "count": 35, "pct": 3.0}, {"label": "Otros / dispersos", "count": 32, "pct": 2.8}, {"label": "Javier Villanueva Marrufo", "count": 32, "pct": 2.8}, {"label": "Javier Aguirre", "count": 29, "pct": 2.5}, {"label": "Renán Tajonar (Morena)", "count": 24, "pct": 2.1}], "aprobacion": [{"label": "Regular", "count": 310, "pct": 29.2}, {"label": "Muy malo", "count": 251, "pct": 23.7}, {"label": "Malo", "count": 216, "pct": 20.4}, {"label": "Bueno", "count": 187, "pct": 17.6}, {"label": "Muy bueno", "count": 90, "pct": 8.5}, {"label": "NC", "count": 4, "pct": 0.4}, {"label": "NS / NC", "count": 3, "pct": 0.3}], "reeleccion": [{"label": "No estoy de acuerdo.", "count": 413, "pct": 39.1}, {"label": "Muy en desacuerdo.", "count": 273, "pct": 25.8}, {"label": "De acuerdo.", "count": 141, "pct": 13.3}, {"label": "Me da Igual.", "count": 137, "pct": 13.0}, {"label": "Muy de acuerdo.", "count": 89, "pct": 8.4}, {"label": "NC", "count": 4, "pct": 0.4}], "malecon": [{"label": "Mejor que se invierta en el problema del agua", "count": 606, "pct": 61.8}, {"label": "Apruebo que se invierta en el malecon", "count": 90, "pct": 9.2}, {"label": "Me da Igual.", "count": 46, "pct": 4.7}, {"label": "Invertir en otro (especifique)", "count": 12, "pct": 1.2}, {"label": "Invertir en otro (especifique) - Seguridad", "count": 9, "pct": 0.9}, {"label": "Invertir en otro (especifique) - Drenaje", "count": 9, "pct": 0.9}, {"label": "NC", "count": 7, "pct": 0.7}, {"label": "Invertir en otro (especifique) - Salud", "count": 5, "pct": 0.5}, {"label": "Invertir en otro (especifique) - Segurridad, pavimentacion, señalización en las calles,,limpieza en las calles.etc", "count": 5, "pct": 0.5}, {"label": "Invertir en otro (especifique) - El problema del cable de luz subnarino", "count": 5, "pct": 0.5}, {"label": "Invertir en otro (especifique) - Infraestructura, ( agua)..promoción..", "count": 5, "pct": 0.5}, {"label": "Invertir en otro (especifique) - Agua, drenaje alumbrado pavimento seguridad", "count": 4, "pct": 0.4}, {"label": "Invertir en otro (especifique) - Pavimentacion", "count": 4, "pct": 0.4}, {"label": "Invertir en otro (especifique) - No", "count": 4, "pct": 0.4}, {"label": "Invertir en otro (especifique) - Agua y suministro de energía eléctrica", "count": 4, "pct": 0.4}, {"label": "Invertir en otro (especifique) - Seguridad, alumbrado, el agua", "count": 4, "pct": 0.4}, {"label": "Invertir en otro (especifique) - Algo más necesario", "count": 4, "pct": 0.4}, {"label": "Invertir en otro (especifique) - Agua", "count": 4, "pct": 0.4}, {"label": "Invertir en otro (especifique) - Planta tratadora San Miguel Saniguelito", "count": 3, "pct": 0.3}, {"label": "Invertir en otro (especifique) - Pavimentacion y Luz eléctrica a colonias irregularescolonias", "count": 3, "pct": 0.3}, {"label": "Invertir en otro (especifique) - En la planta San Miguelito", "count": 3, "pct": 0.3}, {"label": "Invertir en otro (especifique) - En una marina ampliando banco playa", "count": 3, "pct": 0.3}, {"label": "Invertir en otro (especifique) - Agua y seguridad ciudadana", "count": 3, "pct": 0.3}, {"label": "Invertir en otro (especifique) - Seguridad, arreglo de calles y señaléticas de alto en esquinas para evitar tantos accidentes", "count": 3, "pct": 0.3}, {"label": "Invertir en otro (especifique) - En carretera buenas para cuando lleguen los competidores en SEP y nov estén buenas dónde ellos pasan", "count": 3, "pct": 0.3}, {"label": "Invertir en otro (especifique) - Lo mejor sería invertir en las calles... Ya basta de invertir en el malecón para el turismo mientras el pueblo está lleno de baches", "count": 3, "pct": 0.3}, {"label": "Invertir en otro (especifique) - Agua y CFE", "count": 3, "pct": 0.3}, {"label": "Invertir en otro (especifique) - En las calles y en la seguridad  de los habitantes  se pueden contratar policías por que son pocos para la cantidad de habitantes de la isla", "count": 3, "pct": 0.3}, {"label": "Invertir en otro (especifique) - Drenaje, seguridad", "count": 3, "pct": 0.3}, {"label": "Invertir en otro (especifique) - Agua, drenaje y seguridad", "count": 3, "pct": 0.3}, {"label": "Invertir en otro (especifique) - Repavimentación de la Av. ZAMNÁ", "count": 3, "pct": 0.3}, {"label": "Invertir en otro (especifique) - Apoyo a personas con discapacidad o de bajos recursos", "count": 3, "pct": 0.3}, {"label": "Invertir en otro (especifique) - En el problema de aguas residuales d capa que contamina el manto friatico", "count": 3, "pct": 0.3}, {"label": "Invertir en otro (especifique) - Otras nesecidsdes", "count": 3, "pct": 0.3}, {"label": "Invertir en otro (especifique) - Medicamentos, seguridad", "count": 3, "pct": 0.3}, {"label": "Invertir en otro (especifique) - Que se invierta mejor en carreteras porqué da mala imagen las que tenemos", "count": 3, "pct": 0.3}, {"label": "Invertir en otro (especifique) - Calles", "count": 3, "pct": 0.3}, {"label": "Invertir en otro (especifique) - Luz , agua, seguridad", "count": 3, "pct": 0.3}, {"label": "Invertir en otro (especifique) - Pavimentación", "count": 3, "pct": 0.3}, {"label": "Invertir en otro (especifique) - Y no más permisos de construcción", "count": 3, "pct": 0.3}, {"label": "Invertir en otro (especifique) - Planta san miguelito", "count": 3, "pct": 0.3}, {"label": "Invertir en otro (especifique) - Una parte en el malecón, otra parte en calles, parques, señalamientos, viales", "count": 3, "pct": 0.3}, {"label": "Invertir en otro (especifique) - Drenaje zona sur", "count": 3, "pct": 0.3}, {"label": "Invertir en otro (especifique) - En el problema de agua o en reparación de calles con baches", "count": 2, "pct": 0.2}, {"label": "Invertir en otro (especifique) - Más seguridad mejoramiento de playas", "count": 2, "pct": 0.2}, {"label": "Invertir en otro (especifique) - En Cozumel hay muchos otros problemas que resolver más importantes que remodelar el malecón, como el agua, el alumbrado público, calles etc", "count": 2, "pct": 0.2}, {"label": "Invertir en otro (especifique) - En el cárcamo de san Miguelito", "count": 2, "pct": 0.2}, {"label": "Invertir en otro (especifique) - Seguridad o mejora del parque Benito Juárez", "count": 2, "pct": 0.2}, {"label": "Invertir en otro (especifique) - El de reciclaje de basura para no seguir contaminado la isla", "count": 2, "pct": 0.2}, {"label": "Invertir en otro (especifique) - Hay colonias que necesitan drenaje y pavimento desde hace muchos años", "count": 2, "pct": 0.2}, {"label": "Invertir en otro (especifique) - Pavimentación y alumbrado público", "count": 2, "pct": 0.2}, {"label": "Invertir en otro (especifique) - En la mejora de la red de alcantarillado y drenaje", "count": 2, "pct": 0.2}, {"label": "Invertir en otro (especifique) - En canchas deportivas", "count": 2, "pct": 0.2}, {"label": "Invertir en otro (especifique) - Servicios agua luz y seguridad", "count": 2, "pct": 0.2}, {"label": "Invertir en otro (especifique) - En el agua y otras necesidades de cozumel", "count": 2, "pct": 0.2}, {"label": "Invertir en otro (especifique) - Sistema de agua potable", "count": 2, "pct": 0.2}, {"label": "Invertir en otro (especifique) - El seguridad, vialidad, imagen urbana, saneamiento de aguas negras y que regresen los impuestos de los cruceros a Cozumel.", "count": 2, "pct": 0.2}, {"label": "Invertir en otro (especifique) - Educación y seguridad", "count": 2, "pct": 0.2}, {"label": "Invertir en otro (especifique) - Que se invierte en buenas carreteras para los Ironman", "count": 2, "pct": 0.2}, {"label": "Invertir en otro (especifique) - La zona sur necesita mas atención", "count": 2, "pct": 0.2}, {"label": "Invertir en otro (especifique) - Capa", "count": 2, "pct": 0.2}, {"label": "Invertir en otro (especifique) - Agua , turismo", "count": 2, "pct": 0.2}, {"label": "Invertir en otro (especifique) - Agua, drenaje, basura, escuelas, seguridad entre otros.", "count": 2, "pct": 0.2}, {"label": "Invertir en otro (especifique) - capa", "count": 2, "pct": 0.2}, {"label": "Invertir en otro (especifique) - Inversión en infraestructura educativa", "count": 2, "pct": 0.2}, {"label": "Invertir en otro (especifique) - Seguridad y turismo", "count": 2, "pct": 0.2}, {"label": "Invertir en otro (especifique) - drenaje", "count": 1, "pct": 0.1}, {"label": "Invertir en otro (especifique) - Servicio de transporte público... Obligan a los estudiantes desde secundaria a manejar moto y a los demás a usar mototaxis o caminar a pleno sol.", "count": 1, "pct": 0.1}, {"label": "Invertir en otro (especifique) - Pavimentar las calles de las colonias, alumbrado público en todas las colonias, banquetas, seguridad, entre otros.", "count": 1, "pct": 0.1}, {"label": "Invertir en otro (especifique) - En un teatro del pueblo", "count": 1, "pct": 0.1}, {"label": "Invertir en otro (especifique) - Nueva planta de tratamiento de aguas residuales", "count": 1, "pct": 0.1}, {"label": "Invertir en otro (especifique) - Seguridad mucho robo", "count": 1, "pct": 0.1}, {"label": "Invertir en otro (especifique) - Bacheode calles, limpieza,,transporte publico, etc", "count": 1, "pct": 0.1}, {"label": "Invertir en otro (especifique) - Atención a las aguas negras", "count": 1, "pct": 0.1}, {"label": "Invertir en otro (especifique) - Museos, agua, alcantarillado, parques marinos, aceras.", "count": 1, "pct": 0.1}, {"label": "Invertir en otro (especifique) - Desarrollo social, Desarrollo Económico, Agua,Luz,", "count": 1, "pct": 0.1}, {"label": "Invertir en otro (especifique) - En calles, alumbrado público, parques para recreación de niños", "count": 1, "pct": 0.1}, {"label": "Invertir en otro (especifique) - Problemas de luz y agua", "count": 1, "pct": 0.1}, {"label": "Invertir en otro (especifique) - En los problemas de agua, luz, alumbrado público, pavimentación de calidad, banquetas, seguridad en todas las colonias y playas, entre  otros.", "count": 1, "pct": 0.1}, {"label": "Invertir en otro (especifique) - En el cárcamo de Cozumel", "count": 1, "pct": 0.1}, {"label": "Invertir en otro (especifique) - Y tambien en drenaje", "count": 1, "pct": 0.1}, {"label": "Invertir en otro (especifique) - Agua, basura, luz, seguridad ...", "count": 1, "pct": 0.1}, {"label": "Invertir en otro (especifique) - seguridad", "count": 1, "pct": 0.1}, {"label": "Invertir en otro (especifique) - Agua potable y drenaje", "count": 1, "pct": 0.1}, {"label": "Invertir en otro (especifique) - Pozos", "count": 1, "pct": 0.1}, {"label": "Invertir en otro (especifique) - invertir en la maquinas residuales.", "count": 1, "pct": 0.1}, {"label": "Invertir en otro (especifique) - En e mejorar las instalaciones de capa", "count": 1, "pct": 0.1}, {"label": "Invertir en otro (especifique) - Servicios básicos", "count": 1, "pct": 0.1}, {"label": "Invertir en otro (especifique) - Luz", "count": 1, "pct": 0.1}, {"label": "Invertir en otro (especifique) - lo invierte el gobierno del estado", "count": 1, "pct": 0.1}, {"label": "Invertir en otro (especifique) - Calles y banquetas de varias zonas de cozumel", "count": 1, "pct": 0.1}, {"label": "Invertir en otro (especifique) - Arreglar las calles y señalamientos de tránsito", "count": 1, "pct": 0.1}, {"label": "Invertir en otro (especifique) - Dignificar la policía", "count": 1, "pct": 0.1}, {"label": "Invertir en otro (especifique) - Cualquier otro que contribuya en apoyo a la ciudadanía", "count": 1, "pct": 0.1}, {"label": "Invertir en otro (especifique) - En seguridad publica", "count": 1, "pct": 0.1}, {"label": "Invertir en otro (especifique) - Planta de tratamiento, grúa del municipio, por ejemplo", "count": 1, "pct": 0.1}, {"label": "Invertir en otro (especifique) - Cableado subterráneo centro", "count": 1, "pct": 0.1}, {"label": "Invertir en otro (especifique) - Calles, alumbrado movilidad", "count": 1, "pct": 0.1}, {"label": "Invertir en otro (especifique) - Calles donde realmente lo requiera", "count": 1, "pct": 0.1}], "careos": {"Marín vs González vs Tajonar": [{"label": "Por ninguno / Anularía", "count": 311, "pct": 34.0}, {"label": "Juan Carlos González", "count": 214, "pct": 23.4}, {"label": "No iría a votar", "count": 128, "pct": 14.0}, {"label": "Roberto Marín  ·  Movimiento Ciudadano", "count": 115, "pct": 12.6}, {"label": "NS / NC", "count": 69, "pct": 7.5}, {"label": "Renan Sanchez Tajonar  ·  Morena", "count": 49, "pct": 5.3}, {"label": "NC", "count": 30, "pct": 3.3}], "Marín vs González vs Chacón": [{"label": "Por ninguno / Anularía", "count": 245, "pct": 26.7}, {"label": "Juan Carlos González", "count": 213, "pct": 23.2}, {"label": "José Luis Chacón Méndez  ·  Morena", "count": 171, "pct": 18.6}, {"label": "Roberto Marín  ·  Movimiento Ciudadano", "count": 118, "pct": 12.8}, {"label": "No iría a votar", "count": 92, "pct": 10.0}, {"label": "NS / NC", "count": 53, "pct": 5.8}, {"label": "NC", "count": 27, "pct": 2.9}], "Marín vs González vs Vázquez": [{"label": "Margarita Vazquez (Camarona).  ·  Morena", "count": 335, "pct": 36.5}, {"label": "Juan Carlos González", "count": 203, "pct": 22.1}, {"label": "Por ninguno / Anularía", "count": 163, "pct": 17.8}, {"label": "Roberto Marín  ·  Movimiento Ciudadano", "count": 76, "pct": 8.3}, {"label": "No iría a votar", "count": 66, "pct": 7.2}, {"label": "NC", "count": 38, "pct": 4.1}, {"label": "NS / NC", "count": 37, "pct": 4.0}], "Marín vs Delbouis vs Chacón": [{"label": "Por ninguno / Anularía", "count": 255, "pct": 28.3}, {"label": "Pedro Joaquin Delbouis  ·  PRI", "count": 213, "pct": 23.6}, {"label": "José Luis Chacón Méndez  ·  Morena", "count": 164, "pct": 18.2}, {"label": "Roberto Marín  ·  Movimiento Ciudadano", "count": 104, "pct": 11.5}, {"label": "No iría a votar", "count": 75, "pct": 8.3}, {"label": "NS / NC", "count": 61, "pct": 6.8}, {"label": "NC", "count": 29, "pct": 3.2}], "Marín vs González vs Cohuo": [{"label": "Por ninguno / Anularía", "count": 243, "pct": 27.6}, {"label": "Juan Carlos González  ·  PRI", "count": 202, "pct": 23.0}, {"label": "Rusell Cohuo.  ·  Morena", "count": 114, "pct": 13.0}, {"label": "Roberto Marín  ·  Movimiento Ciudadano", "count": 113, "pct": 12.9}, {"label": "No iría a votar", "count": 98, "pct": 11.1}, {"label": "NS / NC", "count": 69, "pct": 7.8}, {"label": "NC", "count": 40, "pct": 4.6}], "Marín vs Delbouis vs Vázquez": [{"label": "Margarita Vazquez (Camarona).  ·  Morena", "count": 339, "pct": 37.4}, {"label": "Pedro Joaquin Delbouis  ·  PRI", "count": 197, "pct": 21.7}, {"label": "Por ninguno / Anularía", "count": 167, "pct": 18.4}, {"label": "Roberto Marín  ·  Movimiento Ciudadano", "count": 79, "pct": 8.7}, {"label": "No iría a votar", "count": 46, "pct": 5.1}, {"label": "NS / NC", "count": 39, "pct": 4.3}, {"label": "NC", "count": 39, "pct": 4.3}]}, "dip_local": [{"label": "Alex Matar", "count": 201, "pct": 22.3}, {"label": "Margarita Vázquez", "count": 168, "pct": 18.6}, {"label": "Pedro Joaquín Delbouis", "count": 142, "pct": 15.7}, {"label": "Daniela Ayala.", "count": 92, "pct": 10.2}, {"label": "Oscar Pinto Silva", "count": 46, "pct": 5.1}, {"label": "Carmen Joaquín ·", "count": 32, "pct": 3.5}, {"label": "Irwin Batun Alpuche", "count": 31, "pct": 3.4}, {"label": "Otro (especifique)", "count": 19, "pct": 2.1}, {"label": "Ana Arana", "count": 16, "pct": 1.8}, {"label": "Otro (especifique) - Ninguno", "count": 15, "pct": 1.7}, {"label": "NC", "count": 12, "pct": 1.3}, {"label": "Paul Quintero", "count": 11, "pct": 1.2}, {"label": "Otro (especifique) - Javier Eddie Villanueva Marrufo", "count": 11, "pct": 1.2}, {"label": "Otro (especifique) - Juanita Alonso", "count": 9, "pct": 1.0}, {"label": "Otro (especifique) - Juanita Alonso Marrufo", "count": 7, "pct": 0.8}, {"label": "Otro (especifique) - Javier Villanueva marrufo", "count": 6, "pct": 0.7}, {"label": "Otro (especifique) - Javier Villanueva Marrufo", "count": 6, "pct": 0.7}, {"label": "Otro (especifique) - Alejandra Cerón", "count": 5, "pct": 0.6}, {"label": "Otro (especifique) - Ale Cerón", "count": 5, "pct": 0.6}, {"label": "Otro (especifique) - Carlos francisco pacheco polanco", "count": 5, "pct": 0.6}, {"label": "Otro (especifique) - Javicho zetina", "count": 5, "pct": 0.6}, {"label": "Otro (especifique) - Ni a cual irle", "count": 4, "pct": 0.4}, {"label": "Otro (especifique) - Juanita Alondo", "count": 4, "pct": 0.4}, {"label": "Otro (especifique) - Selva", "count": 4, "pct": 0.4}, {"label": "Otro (especifique) - Javier Aguirre", "count": 3, "pct": 0.3}, {"label": "Otro (especifique) - Javierj Aguirre", "count": 3, "pct": 0.3}, {"label": "Otro (especifique) - perla tun", "count": 3, "pct": 0.3}, {"label": "Otro (especifique) - Juanita Alonso martufo", "count": 3, "pct": 0.3}, {"label": "Otro (especifique) - Juanita alomso", "count": 3, "pct": 0.3}, {"label": "Otro (especifique) - Por Santa Claus", "count": 3, "pct": 0.3}, {"label": "Otro (especifique) - Por favor necesitamos un buen candidato estamos muy perdidos en Cozumel no hay ningún buen candidato", "count": 2, "pct": 0.2}, {"label": "Otro (especifique) - Alexandra Cerón Grajales", "count": 2, "pct": 0.2}, {"label": "Otro (especifique) - Fidel villanueva", "count": 2, "pct": 0.2}, {"label": "Otro (especifique) - Carlos Francisco Pacheco", "count": 2, "pct": 0.2}, {"label": "Otro (especifique) - Juanita alonso", "count": 2, "pct": 0.2}, {"label": "Otro (especifique) - Juanita alonzo", "count": 2, "pct": 0.2}, {"label": "Otro (especifique) - Juanita Alonso marrufo", "count": 2, "pct": 0.2}, {"label": "Otro (especifique) - José Luis Chacón", "count": 2, "pct": 0.2}, {"label": "Otro (especifique) - I", "count": 2, "pct": 0.2}, {"label": "Otro (especifique) - juanita alonso", "count": 1, "pct": 0.1}, {"label": "Otro (especifique) - Roberto Marin", "count": 1, "pct": 0.1}, {"label": "Otro (especifique) - Carlos Pacheco Polanco", "count": 1, "pct": 0.1}, {"label": "Otro (especifique) - Ale Cerón Grajales", "count": 1, "pct": 0.1}, {"label": "Otro (especifique) - Ale Ceron", "count": 1, "pct": 0.1}, {"label": "Otro (especifique) - Nadie", "count": 1, "pct": 0.1}, {"label": "Otro (especifique) - Ninguno todos han tenido cargos y no han hecho nada por el pueblo.", "count": 1, "pct": 0.1}, {"label": "Otro (especifique) - Rusel cohuo", "count": 1, "pct": 0.1}, {"label": "Otro (especifique) - Pinocho", "count": 1, "pct": 0.1}, {"label": "Otro (especifique) - Alguien preparado", "count": 1, "pct": 0.1}, {"label": "Otro (especifique) - Russel cohuo", "count": 1, "pct": 0.1}], "dip_federal": [{"label": "Ninguno de ellos", "count": 325, "pct": 33.3}, {"label": "Sara Latife", "count": 234, "pct": 24.0}, {"label": "Cristina Torres", "count": 89, "pct": 9.1}, {"label": "Carmen Joaquin", "count": 88, "pct": 9.0}, {"label": "Mauricio Gongora", "count": 46, "pct": 4.7}, {"label": "Atenea Ricalde", "count": 23, "pct": 2.4}, {"label": "Otro (especifique)", "count": 14, "pct": 1.4}, {"label": "Otro (especifique) - Juanita Alonso Marrufo", "count": 11, "pct": 1.1}, {"label": "NC", "count": 11, "pct": 1.1}, {"label": "Otro (especifique) - Carlos francisco pacheco polanco", "count": 8, "pct": 0.8}, {"label": "Otro (especifique) - Ninguno", "count": 7, "pct": 0.7}, {"label": "Otro (especifique) - Juanita Alonso", "count": 7, "pct": 0.7}, {"label": "Otro (especifique) - Ale Cerón", "count": 7, "pct": 0.7}, {"label": "Otro (especifique) - Juanita", "count": 7, "pct": 0.7}, {"label": "Otro (especifique) - Javier Aguirre", "count": 6, "pct": 0.6}, {"label": "Otro (especifique) - Alejandra Cerón", "count": 6, "pct": 0.6}, {"label": "Otro (especifique) - Javier Villanueva marrufo", "count": 6, "pct": 0.6}, {"label": "Otro (especifique) - Javier Villanueva Marrufo", "count": 6, "pct": 0.6}, {"label": "Otro (especifique) - Javier Eddie Villanueva Marrufo", "count": 6, "pct": 0.6}, {"label": "Otro (especifique) - Pedro Joaquín", "count": 5, "pct": 0.5}, {"label": "Otro (especifique) - Alex mattar", "count": 5, "pct": 0.5}, {"label": "Otro (especifique) - Carlos francisco Pacheco Polanco", "count": 4, "pct": 0.4}, {"label": "Otro (especifique) - Juanita alonzo", "count": 3, "pct": 0.3}, {"label": "Otro (especifique) - Renan Tajonar", "count": 3, "pct": 0.3}, {"label": "Otro (especifique) - Carlos Francisco Pacheco Polanco", "count": 3, "pct": 0.3}, {"label": "Otro (especifique) - Marin Mollinero", "count": 3, "pct": 0.3}, {"label": "Otro (especifique) - Alex matar", "count": 3, "pct": 0.3}, {"label": "Otro (especifique) - Juanita Alonso martufo", "count": 3, "pct": 0.3}, {"label": "Otro (especifique) - No", "count": 3, "pct": 0.3}, {"label": "Otro (especifique) - Hugo Alday", "count": 3, "pct": 0.3}, {"label": "Juan Carrillo Soberanis", "count": 2, "pct": 0.2}, {"label": "Otro (especifique) - Alexandra Ceron Grajales", "count": 2, "pct": 0.2}, {"label": "Otro (especifique) - Juan Carlos Gonzáles", "count": 2, "pct": 0.2}, {"label": "Otro (especifique) - Carlos Francisco Pacheco", "count": 2, "pct": 0.2}, {"label": "Otro (especifique) - Alejandro mattar", "count": 2, "pct": 0.2}, {"label": "Otro (especifique) - K", "count": 2, "pct": 0.2}, {"label": "Otro (especifique) - Juanita Alonso marrufo", "count": 2, "pct": 0.2}, {"label": "Otro (especifique) - Ninguno todos son iguales", "count": 2, "pct": 0.2}, {"label": "Otro (especifique) - Alex Mattar Perez", "count": 2, "pct": 0.2}, {"label": "Otro (especifique) - juanita alonso", "count": 1, "pct": 0.1}, {"label": "Otro (especifique) - Roberto Marin", "count": 1, "pct": 0.1}, {"label": "Otro (especifique) - Alejandra Cerón G", "count": 1, "pct": 0.1}, {"label": "Otro (especifique) - ..", "count": 1, "pct": 0.1}, {"label": "Otro (especifique) - Juanita alonso", "count": 1, "pct": 0.1}, {"label": "Otro (especifique) - no", "count": 1, "pct": 0.1}, {"label": "Otro (especifique) - Javier Pizaña", "count": 1, "pct": 0.1}, {"label": "Otro (especifique) - juanita alonzo", "count": 1, "pct": 0.1}, {"label": "Otro (especifique) - No conozco a ninguno", "count": 1, "pct": 0.1}, {"label": "Otro (especifique) - Movimiento del sombrero", "count": 1, "pct": 0.1}, {"label": "Otro (especifique) - Margarita Vázquez", "count": 1, "pct": 0.1}, {"label": "Otro (especifique) - No conozco a. Ninguno", "count": 1, "pct": 0.1}, {"label": "Otro (especifique) - Ninguno de ellos", "count": 1, "pct": 0.1}, {"label": "Otro (especifique) - Russel cohuo", "count": 1, "pct": 0.1}], "partido_mejor": [{"label": "MORENA", "count": 438, "pct": 49.0}, {"label": "PRI", "count": 205, "pct": 23.0}, {"label": "NINGUNO", "count": 116, "pct": 13.0}, {"label": "PT", "count": 53, "pct": 5.9}, {"label": "PAN", "count": 46, "pct": 5.2}, {"label": "MOVIMIENTO CIUDADANO", "count": 16, "pct": 1.8}, {"label": "NC", "count": 14, "pct": 1.6}, {"label": "PARTIDO VERDE", "count": 3, "pct": 0.3}, {"label": "MAS", "count": 2, "pct": 0.2}], "gobernador": [{"label": "RAFAEL MARIN MOLLINEDO", "count": 488, "pct": 55.3}, {"label": "NINGUNA DE ELLOS", "count": 236, "pct": 26.8}, {"label": "EUGENIO GINO SEGURA", "count": 119, "pct": 13.5}, {"label": "ANA PATRICIA PERALTA", "count": 18, "pct": 2.0}, {"label": "NC", "count": 15, "pct": 1.7}, {"label": "MARIBEL VILLEGAS", "count": 6, "pct": 0.7}], "edad": [{"label": "55 años o más", "count": 366, "pct": 31.4}, {"label": "45 a 54 años", "count": 315, "pct": 27.0}, {"label": "35 a 44 años", "count": 251, "pct": 21.5}, {"label": "25 a 34 años", "count": 177, "pct": 15.2}, {"label": "18 a 24 años", "count": 58, "pct": 5.0}], "sexo": [{"label": "HOMBRE", "count": 595, "pct": 51.0}, {"label": "MUJER", "count": 556, "pct": 47.6}, {"label": "PREFIERO NO RESPONDER", "count": 16, "pct": 1.4}], "colonias": [{"label": "CENTRO", "count": 154}, {"label": "E. ZAPATA", "count": 113}, {"label": "10 DE ABRIL", "count": 105}, {"label": "A. LOPEZ MATEOS", "count": 82}, {"label": "CUZAMIL INVIQROO", "count": 55}, {"label": "ANDRES QROO", "count": 54}, {"label": "NUEVA GENERACION", "count": 48}, {"label": "FLAMINGOS 1 Y 2", "count": 47}, {"label": "SAN MIGUEL 1", "count": 44}, {"label": "INDEPENDECIA", "count": 41}, {"label": "SAN MIGUEL 2", "count": 39}, {"label": "SAN GERVACIO", "count": 39}, {"label": "FELIX GONZALEZ", "count": 31}, {"label": "FLORES MAGON 1", "count": 31}, {"label": "RECIDENCIAL ALTAMAR", "count": 29}], "ocupacion_top": [{"label": "Ama de casa", "count": 92, "pct": 8.6}, {"label": "Empleado", "count": 73, "pct": 6.8}, {"label": "Empleada", "count": 57, "pct": 5.3}, {"label": "Comerciante", "count": 47, "pct": 4.4}, {"label": "Abogado", "count": 33, "pct": 3.1}, {"label": "NC", "count": 33, "pct": 3.1}, {"label": "Maestra", "count": 31, "pct": 2.9}, {"label": "Empresario", "count": 28, "pct": 2.6}, {"label": "Empresaria", "count": 25, "pct": 2.3}, {"label": "Taxista", "count": 23, "pct": 2.1}]};
+let COLONIA_VOTO = [{"colonia": "CENTRO", "total": 153, "leader": "Juan Carlos González (PRI)", "leader_count": 44, "leader_pct": 28.8, "lat": 20.5004, "lon": -86.9427, "has_coords": true, "breakdown": [{"label": "Juan Carlos González (PRI)", "count": 44}, {"label": "Margarita Vázquez (Morena)", "count": 34}, {"label": "Ninguno / Anularía", "count": 20}, {"label": "José Luis Chacón (Morena)", "count": 18}, {"label": "Javier Aguirre", "count": 9}, {"label": "Rusell Cohuo (Morena)", "count": 8}, {"label": "Alex Mattar", "count": 7}, {"label": "Otros / dispersos", "count": 6}, {"label": "Roberto Marín (MC)", "count": 3}, {"label": "Juanita Alonso Marrufo", "count": 3}, {"label": "Renán Tajonar (Morena)", "count": 1}]}, {"colonia": "E. ZAPATA", "total": 112, "leader": "Margarita Vázquez (Morena)", "leader_count": 33, "leader_pct": 29.5, "lat": null, "lon": null, "has_coords": false, "breakdown": [{"label": "Margarita Vázquez (Morena)", "count": 33}, {"label": "Ninguno / Anularía", "count": 18}, {"label": "José Luis Chacón (Morena)", "count": 14}, {"label": "Juan Carlos González (PRI)", "count": 14}, {"label": "Rusell Cohuo (Morena)", "count": 10}, {"label": "Alex Mattar", "count": 9}, {"label": "Roberto Marín (MC)", "count": 5}, {"label": "Renán Tajonar (Morena)", "count": 3}, {"label": "Javier Villanueva Marrufo", "count": 3}, {"label": "Juanita Alonso Marrufo", "count": 3}]}, {"colonia": "10 DE ABRIL", "total": 104, "leader": "Margarita Vázquez (Morena)", "leader_count": 36, "leader_pct": 34.6, "lat": 20.4934, "lon": -86.9461, "has_coords": true, "breakdown": [{"label": "Margarita Vázquez (Morena)", "count": 36}, {"label": "Rusell Cohuo (Morena)", "count": 20}, {"label": "Juan Carlos González (PRI)", "count": 17}, {"label": "José Luis Chacón (Morena)", "count": 11}, {"label": "Ninguno / Anularía", "count": 9}, {"label": "Alex Mattar", "count": 3}, {"label": "Juanita Alonso Marrufo", "count": 3}, {"label": "Roberto Marín (MC)", "count": 2}, {"label": "Javier Aguirre", "count": 1}, {"label": "Javier Villanueva Marrufo", "count": 1}, {"label": "Renán Tajonar (Morena)", "count": 1}]}, {"colonia": "A. LOPEZ MATEOS", "total": 82, "leader": "Margarita Vázquez (Morena)", "leader_count": 18, "leader_pct": 22.0, "lat": 20.4941, "lon": -86.9397, "has_coords": true, "breakdown": [{"label": "Margarita Vázquez (Morena)", "count": 18}, {"label": "José Luis Chacón (Morena)", "count": 13}, {"label": "Ninguno / Anularía", "count": 11}, {"label": "Juan Carlos González (PRI)", "count": 10}, {"label": "Rusell Cohuo (Morena)", "count": 7}, {"label": "Javier Villanueva Marrufo", "count": 5}, {"label": "Alex Mattar", "count": 5}, {"label": "Roberto Marín (MC)", "count": 4}, {"label": "Otros / dispersos", "count": 3}, {"label": "Javier Aguirre", "count": 3}, {"label": "Juanita Alonso Marrufo", "count": 2}, {"label": "Renán Tajonar (Morena)", "count": 1}]}, {"colonia": "CUZAMIL INVIQROO", "total": 55, "leader": "Margarita Vázquez (Morena)", "leader_count": 18, "leader_pct": 32.7, "lat": 20.4961, "lon": -86.9427, "has_coords": true, "breakdown": [{"label": "Margarita Vázquez (Morena)", "count": 18}, {"label": "Ninguno / Anularía", "count": 8}, {"label": "José Luis Chacón (Morena)", "count": 6}, {"label": "Juan Carlos González (PRI)", "count": 5}, {"label": "Javier Villanueva Marrufo", "count": 5}, {"label": "Alex Mattar", "count": 4}, {"label": "Otros / dispersos", "count": 4}, {"label": "Roberto Marín (MC)", "count": 3}, {"label": "Renán Tajonar (Morena)", "count": 2}]}, {"colonia": "ANDRES QROO", "total": 54, "leader": "Margarita Vázquez (Morena)", "leader_count": 18, "leader_pct": 33.3, "lat": 20.4955, "lon": -86.9552, "has_coords": true, "breakdown": [{"label": "Margarita Vázquez (Morena)", "count": 18}, {"label": "Ninguno / Anularía", "count": 12}, {"label": "Juan Carlos González (PRI)", "count": 8}, {"label": "Roberto Marín (MC)", "count": 6}, {"label": "Javier Aguirre", "count": 3}, {"label": "José Luis Chacón (Morena)", "count": 3}, {"label": "Rusell Cohuo (Morena)", "count": 2}, {"label": "Alex Mattar", "count": 1}, {"label": "Juanita Alonso Marrufo", "count": 1}]}, {"colonia": "NUEVA GENERACION", "total": 48, "leader": "Margarita Vázquez (Morena)", "leader_count": 15, "leader_pct": 31.2, "lat": 20.4964, "lon": -86.9354, "has_coords": true, "breakdown": [{"label": "Margarita Vázquez (Morena)", "count": 15}, {"label": "Juan Carlos González (PRI)", "count": 6}, {"label": "Ninguno / Anularía", "count": 5}, {"label": "José Luis Chacón (Morena)", "count": 5}, {"label": "Roberto Marín (MC)", "count": 4}, {"label": "Renán Tajonar (Morena)", "count": 3}, {"label": "Juanita Alonso Marrufo", "count": 3}, {"label": "Rusell Cohuo (Morena)", "count": 3}, {"label": "Alex Mattar", "count": 2}, {"label": "Javier Aguirre", "count": 1}, {"label": "Javier Villanueva Marrufo", "count": 1}]}, {"colonia": "FLAMINGOS 1 Y 2", "total": 47, "leader": "Margarita Vázquez (Morena)", "leader_count": 13, "leader_pct": 27.7, "lat": 20.4925, "lon": -86.9476, "has_coords": true, "breakdown": [{"label": "Margarita Vázquez (Morena)", "count": 13}, {"label": "Ninguno / Anularía", "count": 9}, {"label": "Juan Carlos González (PRI)", "count": 8}, {"label": "Renán Tajonar (Morena)", "count": 4}, {"label": "José Luis Chacón (Morena)", "count": 4}, {"label": "Rusell Cohuo (Morena)", "count": 4}, {"label": "Roberto Marín (MC)", "count": 2}, {"label": "Javier Villanueva Marrufo", "count": 2}, {"label": "Javier Aguirre", "count": 1}]}, {"colonia": "SAN MIGUEL 1", "total": 44, "leader": "Margarita Vázquez (Morena)", "leader_count": 13, "leader_pct": 29.5, "lat": 20.4944, "lon": -86.9475, "has_coords": true, "breakdown": [{"label": "Margarita Vázquez (Morena)", "count": 13}, {"label": "José Luis Chacón (Morena)", "count": 8}, {"label": "Ninguno / Anularía", "count": 7}, {"label": "Juan Carlos González (PRI)", "count": 5}, {"label": "Roberto Marín (MC)", "count": 4}, {"label": "Rusell Cohuo (Morena)", "count": 3}, {"label": "Javier Villanueva Marrufo", "count": 1}, {"label": "Juanita Alonso Marrufo", "count": 1}, {"label": "Renán Tajonar (Morena)", "count": 1}, {"label": "Otros / dispersos", "count": 1}]}, {"colonia": "INDEPENDECIA", "total": 41, "leader": "Juan Carlos González (PRI)", "leader_count": 10, "leader_pct": 24.4, "lat": 20.4955, "lon": -86.9505, "has_coords": true, "breakdown": [{"label": "Juan Carlos González (PRI)", "count": 10}, {"label": "Ninguno / Anularía", "count": 8}, {"label": "Javier Villanueva Marrufo", "count": 5}, {"label": "Juanita Alonso Marrufo", "count": 4}, {"label": "José Luis Chacón (Morena)", "count": 4}, {"label": "Javier Aguirre", "count": 2}, {"label": "Roberto Marín (MC)", "count": 2}, {"label": "Renán Tajonar (Morena)", "count": 2}, {"label": "Margarita Vázquez (Morena)", "count": 2}, {"label": "Otros / dispersos", "count": 1}, {"label": "Rusell Cohuo (Morena)", "count": 1}]}, {"colonia": "SAN MIGUEL 2", "total": 39, "leader": "Margarita Vázquez (Morena)", "leader_count": 13, "leader_pct": 33.3, "lat": 20.4944, "lon": -86.9475, "has_coords": true, "breakdown": [{"label": "Margarita Vázquez (Morena)", "count": 13}, {"label": "José Luis Chacón (Morena)", "count": 7}, {"label": "Juan Carlos González (PRI)", "count": 6}, {"label": "Ninguno / Anularía", "count": 6}, {"label": "Javier Villanueva Marrufo", "count": 3}, {"label": "Javier Aguirre", "count": 2}, {"label": "Roberto Marín (MC)", "count": 1}, {"label": "Otros / dispersos", "count": 1}]}, {"colonia": "SAN GERVACIO", "total": 38, "leader": "José Luis Chacón (Morena)", "leader_count": 9, "leader_pct": 23.7, "lat": 20.4921, "lon": -86.9367, "has_coords": true, "breakdown": [{"label": "José Luis Chacón (Morena)", "count": 9}, {"label": "Margarita Vázquez (Morena)", "count": 9}, {"label": "Roberto Marín (MC)", "count": 6}, {"label": "Ninguno / Anularía", "count": 4}, {"label": "Otros / dispersos", "count": 3}, {"label": "Juanita Alonso Marrufo", "count": 3}, {"label": "Renán Tajonar (Morena)", "count": 1}, {"label": "Javier Aguirre", "count": 1}, {"label": "Alex Mattar", "count": 1}, {"label": "Juan Carlos González (PRI)", "count": 1}]}, {"colonia": "FELIX GONZALEZ", "total": 31, "leader": "José Luis Chacón (Morena)", "leader_count": 7, "leader_pct": 22.6, "lat": 20.4934, "lon": -86.9461, "has_coords": true, "breakdown": [{"label": "José Luis Chacón (Morena)", "count": 7}, {"label": "Rusell Cohuo (Morena)", "count": 5}, {"label": "Ninguno / Anularía", "count": 5}, {"label": "Margarita Vázquez (Morena)", "count": 4}, {"label": "Roberto Marín (MC)", "count": 4}, {"label": "Otros / dispersos", "count": 3}, {"label": "Juanita Alonso Marrufo", "count": 1}, {"label": "Renán Tajonar (Morena)", "count": 1}, {"label": "Juan Carlos González (PRI)", "count": 1}]}, {"colonia": "FLORES MAGON 1", "total": 31, "leader": "Ninguno / Anularía", "leader_count": 7, "leader_pct": 22.6, "lat": 20.4941, "lon": -86.9397, "has_coords": true, "breakdown": [{"label": "Ninguno / Anularía", "count": 7}, {"label": "Rusell Cohuo (Morena)", "count": 7}, {"label": "José Luis Chacón (Morena)", "count": 5}, {"label": "Javier Villanueva Marrufo", "count": 4}, {"label": "Margarita Vázquez (Morena)", "count": 4}, {"label": "Roberto Marín (MC)", "count": 1}, {"label": "Juan Carlos González (PRI)", "count": 1}, {"label": "Javier Aguirre", "count": 1}, {"label": "Otros / dispersos", "count": 1}]}, {"colonia": "RECIDENCIAL ALTAMAR", "total": 29, "leader": "José Luis Chacón (Morena)", "leader_count": 8, "leader_pct": 27.6, "lat": 20.4964, "lon": -86.9354, "has_coords": true, "breakdown": [{"label": "José Luis Chacón (Morena)", "count": 8}, {"label": "Ninguno / Anularía", "count": 6}, {"label": "Rusell Cohuo (Morena)", "count": 5}, {"label": "Juan Carlos González (PRI)", "count": 3}, {"label": "Margarita Vázquez (Morena)", "count": 3}, {"label": "Alex Mattar", "count": 2}, {"label": "Otros / dispersos", "count": 1}, {"label": "Javier Aguirre", "count": 1}]}, {"colonia": "CHENTUK", "total": 28, "leader": "Margarita Vázquez (Morena)", "leader_count": 11, "leader_pct": 39.3, "lat": 20.4974, "lon": -86.9371, "has_coords": true, "breakdown": [{"label": "Margarita Vázquez (Morena)", "count": 11}, {"label": "Ninguno / Anularía", "count": 8}, {"label": "José Luis Chacón (Morena)", "count": 4}, {"label": "Juan Carlos González (PRI)", "count": 3}, {"label": "Rusell Cohuo (Morena)", "count": 2}]}, {"colonia": "COLONOS CUZAMIL", "total": 24, "leader": "Margarita Vázquez (Morena)", "leader_count": 11, "leader_pct": 45.8, "lat": 20.4955, "lon": -86.9598, "has_coords": true, "breakdown": [{"label": "Margarita Vázquez (Morena)", "count": 11}, {"label": "Juan Carlos González (PRI)", "count": 4}, {"label": "José Luis Chacón (Morena)", "count": 2}, {"label": "Alex Mattar", "count": 2}, {"label": "Rusell Cohuo (Morena)", "count": 2}, {"label": "Juanita Alonso Marrufo", "count": 1}, {"label": "Javier Aguirre", "count": 1}, {"label": "Ninguno / Anularía", "count": 1}]}, {"colonia": "LAS FINCAS", "total": 20, "leader": "José Luis Chacón (Morena)", "leader_count": 9, "leader_pct": 45.0, "lat": null, "lon": null, "has_coords": false, "breakdown": [{"label": "José Luis Chacón (Morena)", "count": 9}, {"label": "Margarita Vázquez (Morena)", "count": 5}, {"label": "Roberto Marín (MC)", "count": 2}, {"label": "Javier Aguirre", "count": 1}, {"label": "Juanita Alonso Marrufo", "count": 1}, {"label": "Alex Mattar", "count": 1}, {"label": "Otros / dispersos", "count": 1}]}, {"colonia": "MIRAFLORES", "total": 19, "leader": "José Luis Chacón (Morena)", "leader_count": 4, "leader_pct": 21.1, "lat": null, "lon": null, "has_coords": false, "breakdown": [{"label": "José Luis Chacón (Morena)", "count": 4}, {"label": "Roberto Marín (MC)", "count": 3}, {"label": "Margarita Vázquez (Morena)", "count": 3}, {"label": "Juanita Alonso Marrufo", "count": 2}, {"label": "Otros / dispersos", "count": 2}, {"label": "Ninguno / Anularía", "count": 1}, {"label": "Renán Tajonar (Morena)", "count": 1}, {"label": "Rusell Cohuo (Morena)", "count": 1}, {"label": "Alex Mattar", "count": 1}, {"label": "Juan Carlos González (PRI)", "count": 1}]}, {"colonia": "MAGISTERIAL", "total": 16, "leader": "Margarita Vázquez (Morena)", "leader_count": 5, "leader_pct": 31.2, "lat": 20.4925, "lon": -86.9476, "has_coords": true, "breakdown": [{"label": "Margarita Vázquez (Morena)", "count": 5}, {"label": "Juan Carlos González (PRI)", "count": 3}, {"label": "Roberto Marín (MC)", "count": 2}, {"label": "Ninguno / Anularía", "count": 2}, {"label": "Alex Mattar", "count": 1}, {"label": "Renán Tajonar (Morena)", "count": 1}, {"label": "Rusell Cohuo (Morena)", "count": 1}, {"label": "Juanita Alonso Marrufo", "count": 1}]}, {"colonia": "FLORES MAGON 2", "total": 15, "leader": "Ninguno / Anularía", "leader_count": 3, "leader_pct": 20.0, "lat": 20.4941, "lon": -86.9397, "has_coords": true, "breakdown": [{"label": "Ninguno / Anularía", "count": 3}, {"label": "Rusell Cohuo (Morena)", "count": 3}, {"label": "Margarita Vázquez (Morena)", "count": 3}, {"label": "Renán Tajonar (Morena)", "count": 2}, {"label": "Juan Carlos González (PRI)", "count": 2}, {"label": "Javier Aguirre", "count": 1}, {"label": "José Luis Chacón (Morena)", "count": 1}]}, {"colonia": "CTM", "total": 14, "leader": "Juan Carlos González (PRI)", "leader_count": 5, "leader_pct": 35.7, "lat": 20.4844, "lon": -86.9553, "has_coords": true, "breakdown": [{"label": "Juan Carlos González (PRI)", "count": 5}, {"label": "Margarita Vázquez (Morena)", "count": 3}, {"label": "Rusell Cohuo (Morena)", "count": 2}, {"label": "Otros / dispersos", "count": 1}, {"label": "Juanita Alonso Marrufo", "count": 1}, {"label": "José Luis Chacón (Morena)", "count": 1}, {"label": "Ninguno / Anularía", "count": 1}]}, {"colonia": "MARAVILLA", "total": 14, "leader": "Juan Carlos González (PRI)", "leader_count": 5, "leader_pct": 35.7, "lat": 20.4925, "lon": -86.9476, "has_coords": true, "breakdown": [{"label": "Juan Carlos González (PRI)", "count": 5}, {"label": "Ninguno / Anularía", "count": 3}, {"label": "Margarita Vázquez (Morena)", "count": 3}, {"label": "José Luis Chacón (Morena)", "count": 2}, {"label": "Juanita Alonso Marrufo", "count": 1}]}, {"colonia": "EL ENCANTO", "total": 13, "leader": "Ninguno / Anularía", "leader_count": 4, "leader_pct": 30.8, "lat": null, "lon": null, "has_coords": false, "breakdown": [{"label": "Ninguno / Anularía", "count": 4}, {"label": "Juan Carlos González (PRI)", "count": 3}, {"label": "Margarita Vázquez (Morena)", "count": 2}, {"label": "Roberto Marín (MC)", "count": 1}, {"label": "José Luis Chacón (Morena)", "count": 1}, {"label": "Javier Aguirre", "count": 1}, {"label": "Rusell Cohuo (Morena)", "count": 1}]}, {"colonia": "COZUMEL TURISTICA", "total": 12, "leader": "Margarita Vázquez (Morena)", "leader_count": 5, "leader_pct": 41.7, "lat": 20.4839, "lon": -86.9552, "has_coords": true, "breakdown": [{"label": "Margarita Vázquez (Morena)", "count": 5}, {"label": "José Luis Chacón (Morena)", "count": 2}, {"label": "Ninguno / Anularía", "count": 2}, {"label": "Juanita Alonso Marrufo", "count": 2}, {"label": "Roberto Marín (MC)", "count": 1}]}, {"colonia": "JUAN BAUTISTA", "total": 10, "leader": "Margarita Vázquez (Morena)", "leader_count": 3, "leader_pct": 30.0, "lat": 20.4953, "lon": -86.9336, "has_coords": true, "breakdown": [{"label": "Margarita Vázquez (Morena)", "count": 3}, {"label": "Otros / dispersos", "count": 2}, {"label": "José Luis Chacón (Morena)", "count": 2}, {"label": "Alex Mattar", "count": 1}, {"label": "Javier Villanueva Marrufo", "count": 1}, {"label": "Juanita Alonso Marrufo", "count": 1}]}, {"colonia": "TRANSVERSAL", "total": 9, "leader": "Rusell Cohuo (Morena)", "leader_count": 7, "leader_pct": 77.8, "lat": null, "lon": null, "has_coords": false, "breakdown": [{"label": "Rusell Cohuo (Morena)", "count": 7}, {"label": "José Luis Chacón (Morena)", "count": 1}, {"label": "Ninguno / Anularía", "count": 1}]}, {"colonia": "TRANSVERSAL IRREGULAR", "total": 9, "leader": "Roberto Marín (MC)", "leader_count": 4, "leader_pct": 44.4, "lat": null, "lon": null, "has_coords": false, "breakdown": [{"label": "Roberto Marín (MC)", "count": 4}, {"label": "Margarita Vázquez (Morena)", "count": 2}, {"label": "José Luis Chacón (Morena)", "count": 2}, {"label": "Rusell Cohuo (Morena)", "count": 1}]}, {"colonia": "REPOBLADORES", "total": 8, "leader": "Ninguno / Anularía", "leader_count": 2, "leader_pct": 25.0, "lat": 20.4941, "lon": -86.9397, "has_coords": true, "breakdown": [{"label": "Ninguno / Anularía", "count": 2}, {"label": "Rusell Cohuo (Morena)", "count": 2}, {"label": "Roberto Marín (MC)", "count": 2}, {"label": "Juan Carlos González (PRI)", "count": 1}, {"label": "Margarita Vázquez (Morena)", "count": 1}]}, {"colonia": "TAXISTAS Y MARTILLOS", "total": 7, "leader": "Margarita Vázquez (Morena)", "leader_count": 5, "leader_pct": 71.4, "lat": null, "lon": null, "has_coords": false, "breakdown": [{"label": "Margarita Vázquez (Morena)", "count": 5}, {"label": "Ninguno / Anularía", "count": 2}]}, {"colonia": "FOVISTE", "total": 6, "leader": "Margarita Vázquez (Morena)", "leader_count": 3, "leader_pct": 50.0, "lat": null, "lon": null, "has_coords": false, "breakdown": [{"label": "Margarita Vázquez (Morena)", "count": 3}, {"label": "Ninguno / Anularía", "count": 2}, {"label": "Juanita Alonso Marrufo", "count": 1}]}, {"colonia": "PARAISO", "total": 4, "leader": "Alex Mattar", "leader_count": 2, "leader_pct": 50.0, "lat": null, "lon": null, "has_coords": false, "breakdown": [{"label": "Alex Mattar", "count": 2}, {"label": "Rusell Cohuo (Morena)", "count": 1}, {"label": "Juan Carlos González (PRI)", "count": 1}]}, {"colonia": "IXCHEL", "total": 3, "leader": "Margarita Vázquez (Morena)", "leader_count": 2, "leader_pct": 66.7, "lat": 20.4844, "lon": -86.9553, "has_coords": true, "breakdown": [{"label": "Margarita Vázquez (Morena)", "count": 2}, {"label": "Otros / dispersos", "count": 1}]}, {"colonia": "COLONIA CARIBE", "total": 3, "leader": "Ninguno / Anularía", "leader_count": 3, "leader_pct": 100.0, "lat": 20.4925, "lon": -86.9476, "has_coords": true, "breakdown": [{"label": "Ninguno / Anularía", "count": 3}]}, {"colonia": "URBA", "total": 3, "leader": "Ninguno / Anularía", "leader_count": 3, "leader_pct": 100.0, "lat": null, "lon": null, "has_coords": false, "breakdown": [{"label": "Ninguno / Anularía", "count": 3}]}, {"colonia": "FLORES MAGON 3", "total": 3, "leader": "José Luis Chacón (Morena)", "leader_count": 1, "leader_pct": 33.3, "lat": 20.4944, "lon": -86.9475, "has_coords": true, "breakdown": [{"label": "José Luis Chacón (Morena)", "count": 1}, {"label": "Roberto Marín (MC)", "count": 1}, {"label": "Javier Villanueva Marrufo", "count": 1}]}, {"colonia": "CORPUS CHRISTY", "total": 3, "leader": "Otros / dispersos", "leader_count": 1, "leader_pct": 33.3, "lat": null, "lon": null, "has_coords": false, "breakdown": [{"label": "Otros / dispersos", "count": 1}, {"label": "Margarita Vázquez (Morena)", "count": 1}, {"label": "Juan Carlos González (PRI)", "count": 1}]}, {"colonia": "AMPLIACION CTM", "total": 3, "leader": "Ninguno / Anularía", "leader_count": 1, "leader_pct": 33.3, "lat": 20.4844, "lon": -86.9553, "has_coords": true, "breakdown": [{"label": "Ninguno / Anularía", "count": 1}, {"label": "Margarita Vázquez (Morena)", "count": 1}, {"label": "Juan Carlos González (PRI)", "count": 1}]}, {"colonia": "SAN MIGUEL 3", "total": 2, "leader": "Ninguno / Anularía", "leader_count": 2, "leader_pct": 100.0, "lat": 20.4944, "lon": -86.9475, "has_coords": true, "breakdown": [{"label": "Ninguno / Anularía", "count": 2}]}, {"colonia": "VILLAS DEL SOL", "total": 1, "leader": "Margarita Vázquez (Morena)", "leader_count": 1, "leader_pct": 100.0, "lat": null, "lon": null, "has_coords": false, "breakdown": [{"label": "Margarita Vázquez (Morena)", "count": 1}]}, {"colonia": "CEDRAL", "total": 1, "leader": "Roberto Marín (MC)", "leader_count": 1, "leader_pct": 100.0, "lat": null, "lon": null, "has_coords": false, "breakdown": [{"label": "Roberto Marín (MC)", "count": 1}]}, {"colonia": "RECIDENCIAL CHANKANAAB", "total": 1, "leader": "Juan Carlos González (PRI)", "leader_count": 1, "leader_pct": 100.0, "lat": null, "lon": null, "has_coords": false, "breakdown": [{"label": "Juan Carlos González (PRI)", "count": 1}]}];
 
-const root = document.documentElement;
-const cs = getComputedStyle(document.querySelector('.viz-root'));
-const col = name => cs.getPropertyValue(name).trim();
+function col(varName){
+  return getComputedStyle(document.querySelector('.viz-root')).getPropertyValue(varName).trim();
+}
 
-// Consistent candidate -> color mapping used across every chart in the dashboard
-const CANDIDATE_COLOR = {
-  'Juan Carlos González (PRI)': '--s1',
-  'Juan Carlos González': '--s1',
-  'Juan Carlos González  ·  PRI': '--s1',
-  'José Luis Chacón (Morena)': '--s2',
-  'José Luis Chacón Méndez  ·  Morena': '--s2',
-  'Roberto Marín (MC)': '--s3',
-  'Roberto Marín  ·  Movimiento Ciudadano': '--s3',
-  'Rusell Cohuo (Morena)': '--s4',
-  'Rusell Cohuo.  ·  Morena': '--s4',
-  'Margarita Vázquez (Morena)': '--s5',
-  'Margarita Vazquez (Camarona).  ·  Morena': '--s5',
-  'Alex Mattar': '--s6',
-  'Renán Tajonar (Morena)': '--s7',
-  'Renan Sanchez Tajonar  ·  Morena': '--s7',
-  'Pedro Joaquin Delbouis  ·  PRI': '--s8',
-  'Pedro Joaquín Delbouis': '--s8',
-};
+function stripAccents(s){
+  return s.normalize('NFD').replace(/[̀-ͯ]/g, '');
+}
+
+const CANDIDATE_KEYS = [
+  ['gonzalez', '--s1'],   // Juan Carlos González (PRI)
+  ['chacon', '--s2'],     // José Luis Chacón (Morena)
+  ['marin', '--s3'],      // Roberto Marín (MC)
+  ['cohuo', '--s4'],      // Rusell Cohuo (Morena)
+  ['vazquez', '--s5'],    // Margarita Vázquez (Morena)
+  ['camarona', '--s5'],
+  ['mattar', '--s6'],     // Alex Mattar
+  ['tajonar', '--s7'],    // Renán Tajonar (Morena)
+  ['delbouis', '--s8'],   // Pedro Joaquín Delbouis (PRI)
+];
+
 function colorFor(label){
-  if (CANDIDATE_COLOR[label]) return col(CANDIDATE_COLOR[label]);
+  const norm = stripAccents(String(label || '')).toLowerCase();
+  for (const [key, varName] of CANDIDATE_KEYS) {
+    if (norm.includes(key)) return col(varName);
+  }
   return col('--neutral');
 }
 
-function renderSimpleBars(containerId, dist, opts={}){
-  const el = document.getElementById(containerId);
-  const max = Math.max(...dist.map(d => d.pct));
-  el.innerHTML = dist.map(d => {
-    const w = Math.max((d.pct/max)*100, 2);
-    const color = opts.colorFn ? opts.colorFn(d.label) : col('--s1');
-    return `<div class="bar-row" title="${d.label}: ${d.count} respuestas (${d.pct}%)">
-      <div class="lbl">${d.label}</div>
-      <div class="bar-track"><div class="bar-fill" style="width:${w}%;background:${color}"></div></div>
-      <div class="bar-val">${d.pct}%</div>
-    </div>`;
-  }).join('');
-}
-
-function renderDivergingBars(containerId, dist, order, colorSteps){
-  const el = document.getElementById(containerId);
-  const ordered = order.map(label => dist.find(d => d.label === label)).filter(Boolean);
-  const max = Math.max(...ordered.map(d => d.pct));
-  el.innerHTML = ordered.map((d,i) => {
-    const w = Math.max((d.pct/max)*100, 2);
-    return `<div class="bar-row" title="${d.label}: ${d.count} respuestas (${d.pct}%)">
-      <div class="lbl">${d.label}</div>
-      <div class="bar-track"><div class="bar-fill" style="width:${w}%;background:${colorSteps[i]}"></div></div>
-      <div class="bar-val">${d.pct}%</div>
-    </div>`;
-  }).join('');
-}
-
-function buildLegend(containerId, entries){
-  const el = document.getElementById(containerId);
-  el.innerHTML = entries.map(([label, cssVar]) =>
-    `<div class="legend-item"><span class="swatch" style="background:${col(cssVar)}"></span>${label}</div>`
+function buildLegend(id, pairs){
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.innerHTML = pairs.map(([label, varName]) =>
+    `<div class="legend-item"><span class="swatch" style="background:${col(varName)}"></span>${label}</div>`
   ).join('');
 }
 
-function init(){
+function renderSimpleBars(id, data, opts){
+  opts = opts || {};
+  const el = document.getElementById(id);
+  if (!el || !data || !data.length) { if (el) el.innerHTML = ''; return; }
+  const max = Math.max(...data.map(d => d.count));
+  el.innerHTML = data.map((d, i) => {
+    const width = Math.max(2, Math.round(d.count / max * 100));
+    const pct = d.pct !== undefined ? d.pct : Math.round(d.count / max * 1000) / 10;
+    const color = opts.colorFn ? opts.colorFn(d.label) : col('--s' + ((i % 8) + 1));
+    return `<div class="bar-row" title="${d.count} respuestas · ${pct}%">
+      <div class="lbl">${d.label}</div>
+      <div class="bar-track"><div class="bar-fill" style="width:${width}%;background:${color}"></div></div>
+      <div class="bar-val">${pct}%</div>
+    </div>`;
+  }).join('');
+}
+
+function buildTop5OpenDist(items, prefixRegex, groupLabel, otherFallback){
+  const total = items.reduce((s, d) => s + d.count, 0);
+  const isOpen = (label) => prefixRegex.test(label);
+  const main = items.filter(d => !isOpen(d.label));
+  const open = items.filter(d => isOpen(d.label))
+    .map(d => ({ ...d, label: (d.label.replace(prefixRegex, '').trim() || otherFallback) }))
+    .sort((a, b) => b.count - a.count);
+  const top5 = open.slice(0, 5);
+  const restCount = open.slice(5).reduce((s, d) => s + d.count, 0);
+  const result = [...main, ...top5];
+  if (restCount > 0) {
+    result.push({ label: groupLabel, count: restCount, pct: Math.round(restCount / total * 1000) / 10 });
+  }
+  return result.sort((a, b) => b.count - a.count);
+}
+
+function buildMaleconDist(malecon){
+  return buildTop5OpenDist(malecon, /^Invertir en otro \(especifique\)\s*-?\s*/i, 'Otras respuestas abiertas', 'Otro (sin especificar)');
+}
+
+function buildOtroEspecifiqueDist(items){
+  return buildTop5OpenDist(items, /^Otros?\s*\(especifique\)\s*-?\s*/i, 'Otras respuestas abiertas', 'Otro (sin especificar)');
+}
+
+function renderDivergingBars(id, data, order, colors){
+  const el = document.getElementById(id);
+  if (!el) return;
+  const byLabel = {};
+  data.forEach(d => { byLabel[d.label] = d; });
+  const max = Math.max(...data.map(d => d.count));
+  el.innerHTML = order.map((label, i) => {
+    const d = byLabel[label];
+    if (!d) return '';
+    const width = Math.max(2, Math.round(d.count / max * 100));
+    return `<div class="bar-row" title="${d.count} respuestas · ${d.pct}%">
+      <div class="lbl">${d.label}</div>
+      <div class="bar-track"><div class="bar-fill" style="width:${width}%;background:${colors[i]}"></div></div>
+      <div class="bar-val">${d.pct}%</div>
+    </div>`;
+  }).join('');
+}
+
+let googleMapInstance = null;
+const GMAP_CENTER = { lat: 20.497416, lng: -86.940737 }; // San Miguel de Cozumel (town center)
+
+function buildMapLegend(legendId, data){
+  const legendEl = document.getElementById(legendId);
+  const leaders = [...new Set(data.map(d => d.leader))];
+  legendEl.innerHTML = leaders.map(l =>
+    `<div class="legend-item"><span class="swatch" style="background:${colorFor(l)}"></span>${l}</div>`
+  ).join('');
+}
+
+function tryRenderGoogleMap(){
+  if (window.__gmapsReady && typeof COLONIA_VOTO !== 'undefined' && !googleMapInstance
+      && typeof google !== 'undefined' && google.maps) {
+    renderGoogleMap('leafletMap', COLONIA_VOTO);
+  }
+}
+window.__tryRenderGoogleMap = tryRenderGoogleMap;
+
+function renderGoogleMap(mapDivId, data){
+  const map = new google.maps.Map(document.getElementById(mapDivId), {
+    center: GMAP_CENTER, zoom: 14, scrollwheel: false,
+    streetViewControl: false, mapTypeControl: false, fullscreenControl: false
+  });
+  googleMapInstance = map;
+
+  const maxTotal = Math.max(...data.map(d => d.total));
+  const goldenAngle = 137.508 * Math.PI / 180;
+  const latPerDeg = 111320; // meters per degree latitude
+  const lngPerDeg = 111320 * Math.cos(GMAP_CENTER.lat * Math.PI / 180);
+  let spiralIndex = 0;
+  const infoWindow = new google.maps.InfoWindow();
+
+  data.forEach((d) => {
+    let lat, lng, approx;
+    if (d.has_coords && d.lat != null && d.lon != null) {
+      lat = d.lat; lng = d.lon; approx = false;
+    } else {
+      const angle = spiralIndex * goldenAngle;
+      const radiusM = 65 * Math.sqrt(spiralIndex + 1); // spiral radius in meters, grows outward
+      const dLat = (radiusM * Math.sin(angle)) / latPerDeg;
+      const dLng = (radiusM * Math.cos(angle)) / lngPerDeg;
+      lat = GMAP_CENTER.lat + dLat;
+      lng = GMAP_CENTER.lng + dLng;
+      approx = true;
+      spiralIndex++;
+    }
+    const scale = Math.sqrt(d.total / maxTotal);
+    const r = Math.round(6 + scale * 20);
+    const color = colorFor(d.leader);
+
+    const marker = new google.maps.Marker({
+      position: { lat, lng },
+      map,
+      icon: {
+        path: google.maps.SymbolPath.CIRCLE,
+        scale: r,
+        fillColor: color,
+        fillOpacity: approx ? 0.55 : 0.9,
+        strokeColor: approx ? color : '#ffffff',
+        strokeWeight: approx ? 2 : 1.5,
+        strokeOpacity: approx ? 0.7 : 1
+      }
+    });
+
+    const html = `<div style="font-size:12.5px;"><b>${d.colonia}</b>${approx ? ' <i>(ubicación aproximada)</i>' : ''}<br>${d.leader}: ${d.leader_count}/${d.total} (${d.leader_pct}%)</div>`;
+    marker.addListener('mouseover', () => { infoWindow.setContent(html); infoWindow.open(map, marker); });
+    marker.addListener('mouseout', () => infoWindow.close());
+  });
+}
+
+function renderColoniaHeatmap(gridId, tableId, legendId, data){
+  const grid = document.getElementById(gridId);
+  const tbody = document.querySelector('#' + tableId + ' tbody');
+  const maxTotal = Math.max(...data.map(d => d.total));
+  const minPx = 46, maxPx = 132;
+  grid.innerHTML = data.map(d => {
+    const scale = Math.sqrt(d.total / maxTotal);
+    const px = Math.round(minPx + scale * (maxPx - minPx));
+    const color = colorFor(d.leader);
+    const shortLeader = d.leader.replace(/\s*\(.*?\)/, '').replace('Ninguno / Anularía','Ninguno').replace('Otros / dispersos','Otros');
+    return `<div class="heat-tile" style="width:${px}px;height:${px}px;background:${color}" title="${d.colonia}: ${d.leader} lidera con ${d.leader_count} de ${d.total} respuestas (${d.leader_pct}%)">
+      <div class="t-name">${d.colonia}</div>
+      <div class="t-sub">${d.total}</div>
+    </div>`;
+  }).join('');
+
+  if (tbody) {
+    tbody.innerHTML = data.map(d =>
+      `<tr><td>${d.colonia}</td><td>${d.total}</td><td>${d.leader}</td><td class="num">${d.leader_pct}%</td></tr>`
+    ).join('');
+  }
+
+  const leaders = [...new Set(data.map(d => d.leader))];
+  const legendEl = document.getElementById(legendId);
+  legendEl.innerHTML = leaders.map(l =>
+    `<div class="legend-item"><span class="swatch" style="background:${colorFor(l)}"></span>${l}</div>`
+  ).join('');
+}
+
+function renderDashboard(){
   document.getElementById('statTotal').textContent = DATA.meta.total;
   document.getElementById('statCompleted').textContent = DATA.meta.completed + ' (' + Math.round(DATA.meta.completed/DATA.meta.total*100) + '%)';
   document.getElementById('statPartial').textContent = 171;
@@ -365,9 +547,10 @@ function init(){
     ['Muy en desacuerdo.','No estoy de acuerdo.','Me da Igual.','De acuerdo.','Muy de acuerdo.'],
     [col('--div-warm-strong'), col('--div-warm-soft'), col('--div-mid'), col('--div-cold-soft'), col('--div-cold-strong')]);
 
-  renderSimpleBars('chartMalecon', DATA.malecon.map(d => ({...d, label: d.label.replace('Invertir en otro (especifique)','Otro destino específico').replace(' - Seguridad',' (seguridad)')})));
+  renderSimpleBars('chartMalecon', buildMaleconDist(DATA.malecon));
 
   const careoGrid = document.getElementById('careoGrid');
+  careoGrid.innerHTML = '';
   Object.entries(DATA.careos).forEach(([title, dist], i) => {
     const id = 'careo' + i;
     const card = document.createElement('div');
@@ -383,8 +566,8 @@ function init(){
     ['Renán Tajonar (Morena)', '--s7'], ['Ninguno / no iría / NS-NC', '--neutral'],
   ]);
 
-  renderSimpleBars('chartDipLocal', DATA.dip_local);
-  renderSimpleBars('chartDipFederal', DATA.dip_federal);
+  renderSimpleBars('chartDipLocal', buildOtroEspecifiqueDist(DATA.dip_local));
+  renderSimpleBars('chartDipFederal', buildOtroEspecifiqueDist(DATA.dip_federal));
   renderSimpleBars('chartPartido', DATA.partido_mejor);
   renderSimpleBars('chartGobernador', DATA.gobernador);
 
@@ -393,15 +576,48 @@ function init(){
   renderSimpleBars('chartColonias', DATA.colonias.map(d => ({...d, pct: Math.round(d.count/DATA.meta.total*1000)/10})));
   renderSimpleBars('chartOcupacion', DATA.ocupacion_top);
 
+  buildMapLegend('mapLegend', COLONIA_VOTO);
+  document.getElementById('leafletMap').innerHTML = '';
+  document.getElementById('leafletMap').style.display = '';
+  document.getElementById('mapFallbackNote').style.display = 'none';
+  googleMapInstance = null;
+  tryRenderGoogleMap();
+  setTimeout(() => {
+    if (!googleMapInstance) {
+      document.getElementById('leafletMap').style.display = 'none';
+      document.getElementById('mapFallbackNote').style.display = 'block';
+    }
+  }, 8000);
+  renderColoniaHeatmap('heatmapGrid', 'mapTable', 'mapLegend', COLONIA_VOTO);
+}
+
+function init(){
+  renderDashboard();
+
+  const mosaicBtn = document.getElementById('mosaicToggleBtn');
+  const mosaicGrid = document.getElementById('heatmapGrid');
+  mosaicBtn.addEventListener('click', () => {
+    const showing = mosaicGrid.style.display !== 'none';
+    mosaicGrid.style.display = showing ? 'none' : 'flex';
+    mosaicBtn.textContent = showing ? 'Ver también como mosaico por tamaño' : 'Ocultar mosaico';
+  });
+
   document.querySelectorAll('nav.tabs button').forEach(btn => {
     btn.addEventListener('click', () => {
       document.querySelectorAll('nav.tabs button').forEach(b => b.classList.remove('active'));
       document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
       btn.classList.add('active');
       document.getElementById('panel-' + btn.dataset.tab).classList.add('active');
+      if (btn.dataset.tab === 'mapa' && googleMapInstance) {
+        setTimeout(() => {
+          google.maps.event.trigger(googleMapInstance, 'resize');
+          googleMapInstance.setCenter(GMAP_CENTER);
+        }, 50);
+      }
     });
   });
 
+  const root = document.documentElement;
   const themeBtn = document.getElementById('themeToggle');
   themeBtn.addEventListener('click', () => {
     const current = root.getAttribute('data-theme');
